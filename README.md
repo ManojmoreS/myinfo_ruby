@@ -1,8 +1,12 @@
 # MyinfoRuby
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/myinfo_ruby`. To experiment with that code, run `bin/console` for an interactive prompt.
+A ruby client :gem: to interact with MyInfo API :purple_heart:.
 
-TODO: Delete this and the text above, and describe your gem
+About MyInfo:
+
+MyInfo - Designed by the Singapore Government, MyInfo is a service that enables citizens and residents to manage the use of their personal data for simpler online transactions. Users control and consent to the sharing of their data, and can view a record of past usage. MyInfo users will enjoy less form-filling and a reduced need for providing verifying documentation during online transactions.
+
+MyInfo api integration : https://www.ndi-api.gov.sg/library/trusted-data/myinfo/introduction
 
 ## Installation
 
@@ -21,8 +25,37 @@ Or install it yourself as:
     $ gem install myinfo_ruby
 
 ## Usage
+```ruby
+config = {
+  token_url: '',
+  personal_url: '',
+  code: '', # Code returned from authorise process.
+  private_key: '', # Key generated while CSR for ssl purpose.
+  client_id: '', # Client id provided by ndi-api.
+  client_secret: '', # Client secret provided by ndi-api.
+  attributes: '', # Attributes to be fetched from Api.
+  redirect_url: '',# Redirect_url setup on ndi-api.
+  auth_level: 'L2' #L2 if your using PKI signature, L0 if normal authorisation.
+}
+# Testing
+key = File.read('./testing_private_key.pem')
+config = {
+  token_url: "https://test.api.myinfo.gov.sg/com/v3/token",
+  personal_url: "https://test.api.myinfo.gov.sg/com/v3/person",
+  code: '', # Code returned from authorise process.
+  private_key: key,
+  client_id: 'STG2-MYINFO-SELF-TEST',
+  client_secret: '44d953c796cccebcec9bdc826852857ab412fbe2',
+  attributes: 'name,aliasname,hanyupinyinname,hanyupinyinaliasname,dob',
+  redirect_url: 'http://localhost:3001',
+  auth_level: 'L2'
+}
 
-TODO: Write usage instructions here
+myinfo_client = MyinfoRuby::Client.new config
+personal_data = myinfo_client.fetch_personal
+
+```
+
 
 ## Development
 
