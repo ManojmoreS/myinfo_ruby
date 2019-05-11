@@ -17,19 +17,18 @@ module MyinfoRuby
       # Attributes to be fetched from MyInfo
       @attributes = config[:attributes]
       @redirect_uri = config[:redirect_url]
-      @realm = config[:realm]
       @auth_level = config[:auth_level]
     end
 
     def fetch_personal
       # ********* Access Token *********
-		  token_response = create_token_request(@token_url, @code, @redirect_url, @client_id, @client_secret, @auth_level, @realm, @private_key)
+		  token_response = create_token_request(@token_url, @code, @redirect_url, @client_id, @client_secret, @auth_level, @private_key)
 
       # ********* Verify JWS *********
       decoded_jws = verify_JWS(token_response, @private_key)
 
       # ********* Personal Data *********'
-      personal_response = get_personal_data(@personal_url, decoded_jws['sub'], token_response, @client_id, @attributes, @auth_level, @realm, @private_key)
+      personal_response = get_personal_data(@personal_url, decoded_jws['sub'], token_response, @client_id, @attributes, @auth_level, @private_key)
       if personal_response.code == 200
         personal_data = decrypt_JWE_response(personal_response, @private_key)
         personal_data['uinfin'] = decoded_jws['sub']

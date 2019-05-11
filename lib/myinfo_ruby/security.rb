@@ -3,7 +3,7 @@ require 'rest-client'
 require 'jose'
 module MyinfoRuby
   module Security
-    def create_token_request(token_url, code, redirect_url, client_id, client_secret, auth_level, realm, private_key)
+    def create_token_request(token_url, code, redirect_url, client_id, client_secret, auth_level, private_key)
       token_params = {
         grant_type: 'authorization_code',
         code: code,
@@ -15,7 +15,7 @@ module MyinfoRuby
 
       authorization_header = nil
       if auth_level == 'L2'
-        authorization_header = generate_signature(token_url, token_params, 'POST', 'application/x-www-form-urlencoded', client_id, private_key, realm)
+        authorization_header = generate_signature(token_url, token_params, 'POST', 'application/x-www-form-urlencoded', client_id, private_key)
 
         token_header.merge!({"Authorization" => authorization_header})
       end
@@ -23,7 +23,7 @@ module MyinfoRuby
       JSON.parse(token_response)
     end
 
-    def get_personal_data(personal_url, uinfin, token_response, client_id, attributes, auth_level, realm, private_key)
+    def get_personal_data(personal_url, uinfin, token_response, client_id, attributes, auth_level, private_key)
       puts '------ Fetching personal data ------'
       parameters = {
         :client_id => client_id,
@@ -33,7 +33,7 @@ module MyinfoRuby
       url = personal_url + "/" + uinfin + "/"
 
       if auth_level == 'L2'
-        auth_header = generate_signature(url, parameters, 'GET', 'application/x-www-form-urlencoded', client_id, private_key, realm)
+        auth_header = generate_signature(url, parameters, 'GET', 'application/x-www-form-urlencoded', client_id, private_key)
 
         authorization_header = auth_header+','+authorization_header
       end
@@ -51,33 +51,31 @@ module MyinfoRuby
       jwk = JOSE::JWK.from_pem_file(private_key)
       decoded_JWS = jwk.verify(token_response["access_token"])
       decoded = JSON.parse(decoded_JWS[1])
-      logger.info "#{DateTime.now} : Fetch personal data for #{decoded['sub']} NRIC/FIN"
       decoded
     end
 
     # Decrypt JWE
     def decrypt_JWE_response(personal_data_response, private_key)
       jwk = JOSE::JWK.from_pem_file(private_key)
-      decrypted_personal_data = jwk.block_decrypt(personal_data_response.body)
-      logger.info "#{DateTime.now} : Successfully fetched personal data"
-      JSON.parse(decrypted_personal_data[0])
+      decrypted_personal_JWE = jwk.block_decrypt(personal_data_response.body)
+      decrypted_personal_JWT = jwk.verify(decrypted_personal_JWE[0])
+      JSON.parse(decrypted_personal_JWT[1])
     end
 
     private
 
     # Generate digital fingerprint
-    def generate_signature(url, params, method, content_type, app_id, private_key, realm)
+    def generate_signature(url, params, method, content_type, app_id, private_key)
       url = url.gsub(".api.gov.sg", ".e.api.gov.sg");
       time_stamp = DateTime.now.strftime('%Q')
       nonce_value = time_stamp+'00'
 
       # Initialize header
       apex_headers = {
-        "apex_l2_eg_app_id": app_id,
-        "apex_l2_eg_nonce": nonce_value,
-        "apex_l2_eg_signature_method": "SHA256withRSA",
-        "apex_l2_eg_timestamp": time_stamp,
-        "apex_l2_eg_version": "1.0"
+        "app_id": app_id,
+        "nonce": nonce_value,
+        "signature_method": "RS256",
+        "timestamp": time_stamp
       }
 
       if method == 'POST' && content_type!= "application/x-www-form-urlencoded"
@@ -92,10 +90,10 @@ module MyinfoRuby
       pkey = OpenSSL::PKey::RSA.new(File.read(private_key))
       digest = OpenSSL::Digest::SHA256.new
       digital_signature = Base64.strict_encode64(pkey.sign(digest, baseString))
-
-      authorization_header = "Apex_l2_eg realm="+realm+",apex_l2_eg_timestamp="+time_stamp+
-      ",apex_l2_eg_nonce="+nonce_value+",apex_l2_eg_app_id="+app_id+
-      ",apex_l2_eg_signature_method=SHA256withRSA,apex_l2_eg_version=1.0,apex_l2_eg_signature="+digital_signature
+      # v3 auth header
+      authorization_header = "PKI_SIGN app_id="+app_id+
+      ",timestamp="+time_stamp+",nonce="+nonce_value+
+      ",signature_method=RS256,signature="+digital_signature
     end
   end
 end
